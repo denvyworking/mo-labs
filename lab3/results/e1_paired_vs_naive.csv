@@ -1,0 +1,4 @@
+﻿variant,vs,on_time_rate,on_time_rate_ci95,urgent_on_time_rate,urgent_on_time_rate_ci95,avg_delivery_time,avg_delivery_time_ci95,charge_wait_avg,charge_wait_avg_ci95,charge_wait_max,charge_wait_max_ci95,jain_charge_wait,jain_charge_wait_ci95,power_overload_ticks,power_overload_ticks_ci95,obs_wait_urgent_ticks,obs_wait_urgent_ticks_ci95,obs_wait_parcel_ticks,obs_wait_parcel_ticks_ci95
+priority,naive,-0.0016,0.0048,-0.0094,0.0175,-0.0513,0.5372,-1.068,0.3055,-6.9,2.1683,0.1202,0.031,-1.7333,4.9343,-6.7333,5.9672,0.0,0.0
+negotiation,naive,-0.0058,0.0052,-0.0235,0.0189,0.9877,0.9632,1.5567,0.4908,3.3,3.5026,0.0988,0.0394,-29.0,5.2601,10.7667,5.9105,0.0,0.0
+reputation,naive,-0.0058,0.0052,-0.0235,0.0189,0.9877,0.9632,1.5567,0.4908,3.3,3.5026,0.0988,0.0394,-29.0,5.2601,10.7667,5.9105,0.0,0.0

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>МАС доставки</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --text: #1f2328; --muted: #656d76; --line: #d8dee4; --accent: #1a73e8;
+  --grid: #eef1f4; --hub: #8e44ad; --station: #0f9d58; --bad: #d93025;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d1117; --panel: #161b22; --text: #e6edf3; --muted: #8d96a0; --line: #30363d; --accent: #58a6ff;
+          --grid: #1c222b; --hub: #bc8cff; --station: #3fb950; --bad: #f85149; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header h1 { margin: 0; font-size: 18px; }
+header p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+main { display: grid; grid-template-columns: 280px minmax(320px, 1fr) 320px; gap: 12px; padding: 12px 16px; }
+@media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.card h2 { font-size: 14px; margin: 0 0 8px; }
+label { display: block; font-size: 12px; color: var(--muted); margin-top: 8px; }
+select, input { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.desc { font-size: 12px; color: var(--muted); min-height: 1em; }
+button { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+button.ghost { background: transparent; color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+#canvasWrap { position: relative; }
+canvas { width: 100%; height: auto; display: block; border-radius: 6px; background: var(--panel); }
+.controls { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.controls input[type=range] { flex: 1; min-width: 120px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+td, th { padding: 3px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+#log { height: 260px; overflow: auto; font: 12px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+#log .msg { color: var(--muted); }
+#log .warn { color: var(--bad); }
+.bar { height: 6px; background: var(--grid); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--station); }
+#history { overflow-x: auto; }
+.err { color: var(--bad); white-space: pre-wrap; font-size: 12px; }
+.full { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Многоагентная система городской доставки автономными курьерами</h1>
+  <p>Выберите режимы (распределение задач, зарядка, сценарий сбоев, защита), запустите прогон и смотрите анимацию, сообщения и показатели.</p>
+</header>
+<main>
+  <section class="card">
+    <h2>Режим</h2>
+    <label>Распределение заказов (ЛР2)</label><select id="allocation"></select><div class="desc" id="allocation_d"></div>
+    <label>Зарядка и конфликты (ЛР3)</label><select id="charging"></select><div class="desc" id="charging_d"></div>
+    <label>Сценарий (ЛР4)</label><select id="scenario"></select><div class="desc" id="scenario_d"></div>
+    <label>Защита (ЛР4)</label><select id="defense"></select><div class="desc" id="defense_d"></div>
+    <h2 style="margin-top:14px">Параметры</h2>
+    <div class="row2">
+      <div><label>seed</label><input id="seed" type="number" min="1"></div>
+      <div><label>Курьеров</label><input id="n_couriers" type="number" min="1" max="40"></div>
+      <div><label>Из них тяжёлых</label><input id="heavy_couriers" type="number" min="0"></div>
+      <div><label>Заказов</label><input id="n_orders" type="number" min="1" max="400"></div>
+      <div><label>Заказов/такт</label><input id="order_rate" type="number" step="0.05" min="0.01"></div>
+      <div><label>Станций</label><input id="n_stations" type="number" min="1" max="6"></div>
+      <div><label>Мест на станции</label><input id="station_slots" type="number" min="1"></div>
+      <div><label>Задержка связи</label><input id="msg_latency" type="number" min="1"></div>
+      <div><label>Лимит мощности</label><input id="grid_power_limit" type="number" min="1" placeholder="нет"></div>
+    </div>
+    <div class="controls"><button id="runBtn">Запустить</button></div>
+    <div id="error" class="err"></div>
+  </section>
+
+  <section class="card">
+    <div id="canvasWrap"><canvas id="cv" width="760" height="760"></canvas></div>
+    <div class="controls">
+      <button id="playBtn" class="ghost" disabled>▶</button>
+      <input id="timeline" type="range" min="0" max="0" value="0" disabled>
+      <span id="tick">такт —</span>
+      <select id="speed" style="width:auto"><option value="1">×1</option><option value="3" selected>×3</option><option value="8">×8</option><option value="20">×20</option></select>
+    </div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="card">
+    <h2>Показатели прогона</h2>
+    <table id="metrics"><tbody><tr><td class="desc">Запустите прогон</td></tr></tbody></table>
+  </section>
+
+  <section class="card">
+    <h2>Курьеры и станции в текущий такт</h2>
+    <table id="fleet"><tbody></tbody></table>
+  </section>
+
+  <section class="card" style="grid-column: span 2">
+    <h2>Журнал (до текущего такта)
+      <select id="logFilter" style="width:auto; margin-left:8px"><option value="all">всё</option><option value="ev">события</option><option value="msg">сообщения</option></select>
+    </h2>
+    <div id="log"></div>
+  </section>
+
+  <section class="card full">
+    <h2>История прогонов (для сравнения режимов)</h2>
+    <div id="history"><table><thead></thead><tbody></tbody></table></div>
+  </section>
+</main>
+<script>
+const STATE_COLORS = {idle:"#9aa0a6", to_pickup:"#1a73e8", to_dropoff:"#188038", to_station:"#e37400",
+  waiting_charge:"#d93025", charging:"#f9ab00", stranded:"#5f6368"};
+const STATE_RU = {idle:"свободен", to_pickup:"едет за заказом", to_dropoff:"везёт заказ", to_station:"едет на зарядку",
+  waiting_charge:"ждёт зарядки", charging:"заряжается", stranded:"разрядился"};
+const HISTORY_KEYS = ["on_time_rate","avg_delivery_time","makespan","msgs_total","msgs_per_order","coord_cpu_ms","charge_wait_avg","jain_charge_wait","stranded","power_overload_ticks"];
+const $ = id => document.getElementById(id);
+let data = null, cur = 0, playing = false, timer = null, modes = null, runNo = 0;
+
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+async function init() {
+  const r = await fetch("/api/modes"); const j = await r.json(); modes = j.modes;
+  for (const cat of ["allocation","charging","scenario","defense"]) {
+    const sel = $(cat);
+    for (const m of modes[cat]) { const o = document.createElement("option"); o.value = m.key; o.textContent = `${m.title} [${m.lab}]`; sel.appendChild(o); }
+    sel.value = j.defaults[cat]; sel.onchange = () => $(cat+"_d").textContent = (modes[cat].find(m => m.key === sel.value)||{}).description || "";
+    sel.onchange();
+  }
+  for (const k of ["seed","n_couriers","heavy_couriers","n_orders","order_rate","n_stations","station_slots","msg_latency"]) $(k).value = j.defaults[k];
+  if (Object.keys(j.plugin_errors).length) $("error").textContent = "Ошибки загрузки модулей: " + Object.entries(j.plugin_errors).map(([k,v]) => k+": "+v.trim().split("\n").pop()).join("; ");
+  $("legend").innerHTML = Object.entries(STATE_RU).map(([k,v]) => `<span><span class="dot" style="background:${STATE_COLORS[k]}"></span>${v}</span>`).join("")
+    + `<span><span class="dot" style="background:${css('--hub')};border-radius:2px"></span>точка выдачи</span><span><span class="dot" style="background:${css('--station')};border-radius:2px"></span>станция</span>`;
+}
+
+async function runSim() {
+  const q = new URLSearchParams();
+  for (const k of ["allocation","charging","scenario","defense","seed","n_couriers","heavy_couriers","n_orders","order_rate","n_stations","station_slots","msg_latency","grid_power_limit"]) if ($(k).value !== "") q.set(k, $(k).value);
+  $("runBtn").disabled = true; $("error").textContent = ""; stop();
+  try {
+    const r = await fetch("/api/run?" + q); const j = await r.json();
+    if (j.error) { $("error").textContent = j.error + "\n" + j.trace; return; }
+    data = j; cur = 0; runNo++;
+    $("timeline").max = data.frames.length - 1; $("timeline").disabled = false; $("playBtn").disabled = false;
+    renderMetrics(); addHistory(q); draw(); play();
+  } catch (e) { $("error").textContent = String(e); }
+  finally { $("runBtn").disabled = false; }
+}
+
+function fmt(v) { return typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(3).replace(/\.?0+$/,"")) : (typeof v === "object" ? JSON.stringify(v) : v); }
+
+function renderMetrics() {
+  const m = data.metrics, L = data.labels;
+  let rows = Object.keys(L).filter(k => k in m).map(k => `<tr><td>${L[k]}</td><td class="num">${fmt(m[k])}</td></tr>`);
+  const extra = Object.keys(m).filter(k => !(k in L) && !["msgs_by_perf","cpu_ms","violations","msgs_by_protocol"].includes(k));
+  rows = rows.concat(extra.map(k => `<tr><td>${k}</td><td class="num">${fmt(m[k])}</td></tr>`));
+  rows.push(`<tr><td>Сообщения по протоколам</td><td class="num">${fmt(m.msgs_by_protocol)}</td></tr>`);
+  if (Object.keys(m.violations).length) rows.push(`<tr><td>Нарушения</td><td class="num">${fmt(m.violations)}</td></tr>`);
+  $("metrics").innerHTML = "<tbody>" + rows.join("") + "</tbody>";
+}
+
+function addHistory(q) {
+  const t = $("history").querySelector("table"); const L = data.labels;
+  if (!t.tHead.rows.length) t.tHead.innerHTML = "<tr><th>#</th><th>режим</th><th>параметры</th>" + HISTORY_KEYS.map(k => `<th class="num">${L[k]||k}</th>`).join("") + "</tr>";
+  const c = data.config, m = data.metrics;
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${runNo}</td><td>${c.allocation} / ${c.charging} / ${c.scenario} / ${c.defense}</td><td>seed=${c.seed}, курьеров=${c.n_couriers}, заказов=${c.n_orders}, станций=${c.n_stations}×${c.station_slots}</td>`
+    + HISTORY_KEYS.map(k => `<td class="num">${fmt(m[k])}</td>`).join("");
+  t.tBodies[0].prepend(tr);
+}
+
+function draw() {
+  if (!data) return;
+  const cv = $("cv"), ctx = cv.getContext("2d"), S = data.static, f = data.frames[cur];
+  const W = cv.width, cell = W / Math.max(S.width, S.height);
+  const X = x => (x + 0.5) * cell, Y = y => (y + 0.5) * cell;
+  ctx.clearRect(0, 0, W, W);
+  ctx.strokeStyle = css("--grid"); ctx.lineWidth = 1;
+  for (let i = 0; i <= S.width; i++) { ctx.beginPath(); ctx.moveTo(i*cell, 0); ctx.lineTo(i*cell, S.height*cell); ctx.stroke(); }
+  for (let i = 0; i <= S.height; i++) { ctx.beginPath(); ctx.moveTo(0, i*cell); ctx.lineTo(S.width*cell, i*cell); ctx.stroke(); }
+  ctx.font = `${Math.max(10, cell*0.45)}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const [x, y] of S.hubs) { ctx.fillStyle = css("--hub"); ctx.globalAlpha = .85; ctx.fillRect(X(x)-cell*.42, Y(y)-cell*.42, cell*.84, cell*.84); ctx.globalAlpha = 1; }
+  S.stations.forEach((s, i) => {
+    const [occ, q, online] = f.s[i]; const [x, y] = s.pos;
+    ctx.fillStyle = online ? css("--station") : css("--bad"); ctx.fillRect(X(x)-cell*.45, Y(y)-cell*.45, cell*.9, cell*.9);
+    ctx.fillStyle = "#fff"; ctx.fillText("⚡", X(x), Y(y));
+    ctx.fillStyle = css("--text"); ctx.font = `${Math.max(10, cell*0.38)}px system-ui`;
+    ctx.fillText(`${occ}/${s.slots}` + (q ? ` +${q}` : ""), X(x), Y(y) + cell*.85);
+  });
+  // посылки
+  const waitingAt = {};
+  for (const [oid, px, py, dx, dy, carrier, urgent] of f.p) {
+    if (carrier >= 0) {
+      const c = f.c[carrier];
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = urgent ? css("--bad") : "#188038"; ctx.beginPath(); ctx.moveTo(X(c[0]), Y(c[1])); ctx.lineTo(X(dx), Y(dy)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(dx)-cell*.2, Y(dy)-cell*.2); ctx.lineTo(X(dx)+cell*.2, Y(dy)+cell*.2); ctx.moveTo(X(dx)+cell*.2, Y(dy)-cell*.2); ctx.lineTo(X(dx)-cell*.2, Y(dy)+cell*.2); ctx.stroke(); ctx.lineWidth = 1;
+    } else {
+      const key = px + "," + py; const n = waitingAt[key] = (waitingAt[key] || 0) + 1;
+      ctx.fillStyle = urgent ? css("--bad") : "#e37400";
+      ctx.fillRect(X(px) - cell*.45 + ((n-1) % 5) * cell*.18, Y(py) - cell*.75 - Math.floor((n-1)/5)*cell*.18, cell*.15, cell*.15);
+    }
+  }
+  // курьеры
+  f.c.forEach(([x, y, st, batt, ntask], i) => {
+    const state = S.states[st], heavy = S.couriers[i].type === "heavy", r = cell * (heavy ? .42 : .34);
+    ctx.fillStyle = STATE_COLORS[state]; ctx.beginPath(); ctx.arc(X(x), Y(y), r, 0, Math.PI*2); ctx.fill();
+    if (heavy) { ctx.strokeStyle = css("--text"); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1; }
+    ctx.fillStyle = "#fff"; ctx.font = `bold ${Math.max(9, cell*0.36)}px system-ui`; ctx.fillText(i + 1, X(x), Y(y));
+    ctx.fillStyle = css("--grid"); ctx.fillRect(X(x)-cell*.4, Y(y)+r+2, cell*.8, 4);
+    ctx.fillStyle = batt < 20 ? css("--bad") : css("--station"); ctx.fillRect(X(x)-cell*.4, Y(y)+r+2, cell*.8*batt/100, 4);
+  });
+  $("tick").textContent = `такт ${f.t} / ${data.frames[data.frames.length-1].t}`;
+  $("timeline").value = cur;
+  renderFleet(f); renderLog(f.t);
+}
+
+function renderFleet(f) {
+  const S = data.static;
+  let h = "<tr><th>агент</th><th>состояние</th><th>заряд</th><th class='num'>заказов</th></tr>";
+  f.c.forEach(([x, y, st, batt, n], i) => {
+    h += `<tr><td>${S.couriers[i].id} (${S.couriers[i].type === "heavy" ? "тяж." : "лёг."})</td><td><span class="dot" style="background:${STATE_COLORS[S.states[st]]}"></span>${STATE_RU[S.states[st]]}</td><td style="width:70px"><div class="bar"><i style="width:${batt}%;background:${batt<20?css('--bad'):css('--station')}"></i></div></td><td class="num">${n}</td></tr>`;
+  });
+  S.stations.forEach((s, i) => { const [occ, q, on] = f.s[i]; h += `<tr><td>${s.id}</td><td>${on ? "работает" : "<b style='color:var(--bad)'>недоступна</b>"}</td><td>${occ}/${s.slots} мест</td><td class="num">очередь ${q}</td></tr>`; });
+  $("fleet").innerHTML = "<tbody>" + h + "</tbody>";
+}
+
+function renderLog(t) {
+  const filt = $("logFilter").value; const out = [];
+  for (let i = 0; i < data.events.length && out.length < 4000; i++) {
+    const e = data.events[i]; if (e.t > t) break;
+    if (filt === "msg" && e.kind !== "msg") continue;
+    if (filt === "ev" && e.kind === "msg") continue;
+    out.push(e);
+  }
+  const last = out.slice(-250);
+  $("log").innerHTML = last.map(e => {
+    if (e.kind === "msg") return `<div class="msg">[${e.t}] ${e.from} → ${e.to}  ${e.perf}/${e.proto}  ${JSON.stringify(e.content).slice(0, 140)}</div>`;
+    const {t: _, kind, agent, ...rest} = e;
+    const warn = /stranded|failed|lost|blocked|attack|alert|refused|violation|fault|guard/i.test(kind) ? "warn" : "";
+    return `<div class="${warn}">[${e.t}] ${agent || ""} ${kind} ${JSON.stringify(rest).slice(0, 160)}</div>`;
+  }).join("");
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+function play() { if (!data) return; playing = true; $("playBtn").textContent = "⏸"; tickLoop(); }
+function stop() { playing = false; $("playBtn").textContent = "▶"; clearTimeout(timer); }
+function tickLoop() {
+  if (!playing) return;
+  cur = Math.min(cur + Number($("speed").value), data.frames.length - 1); draw();
+  if (cur >= data.frames.length - 1) { stop(); return; }
+  timer = setTimeout(tickLoop, 60);
+}
+$("runBtn").onclick = runSim;
+$("playBtn").onclick = () => playing ? stop() : (cur >= data.frames.length - 1 && (cur = 0), play());
+$("timeline").oninput = e => { stop(); cur = Number(e.target.value); draw(); };
+$("logFilter").onchange = () => data && renderLog(data.frames[cur].t);
+init();
+</script>
+</body>
+</html>

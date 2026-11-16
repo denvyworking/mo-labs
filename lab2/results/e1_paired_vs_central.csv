@@ -1,0 +1,6 @@
+﻿variant,ref,n,on_time_rate_diff,on_time_rate_ci95,urgent_on_time_rate_diff,urgent_on_time_rate_ci95,avg_delivery_time_diff,avg_delivery_time_ci95,p95_delivery_time_diff,p95_delivery_time_ci95,avg_assign_latency_diff,avg_assign_latency_ci95,alloc_msgs_per_order_diff,alloc_msgs_per_order_ci95,msgs_per_order_diff,msgs_per_order_ci95,coord_cpu_ms_diff,coord_cpu_ms_ci95,distance_total_diff,distance_total_ci95,jain_tasks_diff,jain_tasks_ci95
+cnp,central,30,0.0067,0.0111,0.0259,0.0427,1.2557,0.9165,0.5567,4.598,2.0693,0.029,22.0606,0.1991,22.021,0.254,13.6752,0.2782,0.5333,14.7075,0.0089,0.0121
+cnp-commit,central,30,-0.0083,0.0131,-0.0341,0.0424,3.4587,1.1109,6.0183,5.1247,2.0117,0.0095,21.7428,0.0922,21.8357,0.1556,13.6532,0.136,39.8333,19.6423,0.0072,0.0115
+auction,central,30,0.0094,0.0099,0.0116,0.0391,0.7317,0.8136,-5.6433,3.4829,3.6847,0.0983,15.9495,0.433,15.7667,0.4372,13.461,0.6365,-23.5333,20.1189,0.0119,0.0109
+auction-par,central,30,0.0078,0.0135,0.0357,0.0403,3.187,1.0237,5.9333,5.5706,3.5413,0.1033,16.1078,0.4008,16.2353,0.3874,13.7035,0.6149,10.6,14.6542,0.0093,0.0101
+delegation,central,30,-0.025,0.0131,-0.0837,0.0424,9.6043,1.1858,16.9417,4.9585,0.0,0.0,2.9361,0.4921,3.545,0.5822,10.9193,1.1925,106.5,20.0146,-0.0131,0.0124
